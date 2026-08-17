@@ -1,0 +1,35 @@
+{
+  "name": "influbrand-server",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Express + MongoDB backend for Influbrand (replaces Supabase)",
+  "scripts": {
+    "dev": "node --watch index.js",
+    "start": "node index.js",
+    "seed": "node scripts/seed.js",
+    "seed:influencers": "node scripts/seed.js",
+    "scrape:youtube": "node scripts/scrape-youtube.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.6.2",
+    "google-auth-library": "^11.0.2",
+    "googleapis": "^144.0.0",
+    "helmet": "^8.3.0",
+    "india-location-kit": "^1.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.5.0",
+    "morgan": "^1.10.0",
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.4",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
+
