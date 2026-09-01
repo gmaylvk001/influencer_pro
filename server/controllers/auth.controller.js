@@ -4,7 +4,8 @@ import { Influencer } from "../models/Influencer.js";
 import { Platform } from "../models/Platform.js";
 import { Niche } from "../models/Niche.js";
 import { Otp } from "../models/Otp.js";
-import { signToken } from "../utils/jwt.js";
+import { InstagramAccount } from "../models/InstagramAccount.js";
+import { signToken, verifyToken } from "../utils/jwt.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { assertIdsExist } from "../utils/validateRefs.js";
 import { sendOtpEmail } from "../utils/email.js";
@@ -28,9 +29,14 @@ export const sendOtp = asyncHandler(async (req, res) => {
 
   console.log(`[OTP GENERATED] Email: ${email} | Code: ${otpCode}`);
   
-  await sendOtpEmail(email, otpCode);
+  try {
+    await sendOtpEmail(email, otpCode);
+  } catch (error) {
+    console.error(`Failed to send OTP to ${email}:`, error.message);
+    // In dev, we don't want to block the flow if SMTP is broken. We already logged the OTP.
+  }
   
-  res.json({ message: "OTP sent successfully" });
+  res.json({ message: "OTP sent successfully (check console if email failed)" });
 });
 
 // POST /api/auth/signup
@@ -38,7 +44,7 @@ export const sendOtp = asyncHandler(async (req, res) => {
 // mirroring what the old Supabase `ensureAccountRecords()` trigger-on-login did —
 // except here it happens once, atomically, at signup time.
 export const signup = asyncHandler(async (req, res) => {
-  const { email, password, accountType, fullName, phone, state, district, city, adminSecret, otp } =
+  const { email, password, accountType, fullName, phone, state, district, city, adminSecret, otp, igToken } =
     req.body;
 
   if (!email || !password) {
@@ -56,10 +62,19 @@ export const signup = asyncHandler(async (req, res) => {
     if (!process.env.ADMIN_SIGNUP_SECRET || adminSecret !== process.env.ADMIN_SIGNUP_SECRET) {
       return res.status(403).json({ error: "Invalid admin invite code" });
     }
-  } else {
+  } else if (!igToken) {
     const validOtp = await Otp.findOne({ email, otp });
     if (!validOtp) {
       return res.status(400).json({ error: "Invalid or expired OTP" });
+    }
+  }
+
+  let igData = null;
+  if (igToken) {
+    try {
+      igData = verifyToken(igToken);
+    } catch (err) {
+      return res.status(400).json({ error: "Invalid or expired Instagram connection token" });
     }
   }
 
@@ -121,8 +136,8 @@ export const signup = asyncHandler(async (req, res) => {
         } catch (e) {}
       }
 
-      const avatarUrl = req.body.avatarUrl || fileUrl;
-      await Influencer.create({
+      const avatarUrl = req.body.avatarUrl || fileUrl || (igData && igData.igProfilePic) || null;
+      const influencerDoc = await Influencer.create({
         userId: user._id,
         name: fullName || "New creator",
         state: state || null,
@@ -130,15 +145,27 @@ export const signup = asyncHandler(async (req, res) => {
         city: city || district || "Mumbai",
         gender: gender || null,
         platforms: Array.isArray(platforms) ? platforms : (platforms ? [platforms] : []),
-        handle: handle || null,
+        handle: (igData && igData.igUsername) ? `@${igData.igUsername}` : (handle || null),
         niches: Array.isArray(niches) ? niches : (niches ? [niches] : []),
         languages: Array.isArray(languages) ? languages : (languages ? [languages] : []),
         socialAssets: parsedSocials,
-        avatarUrl: avatarUrl || null,
-        followers: followers ? Number(followers) : 0,
+        avatarUrl: avatarUrl,
+        followers: (igData && igData.igFollowers) ? Number(igData.igFollowers) : (followers ? Number(followers) : 0),
         startingPrice: startingPrice ? Number(startingPrice) : null,
         isPublished: false,
       });
+
+      if (igData) {
+        await InstagramAccount.create({
+          influencerId: influencerDoc._id,
+          instagramUserId: igData.igAccountId,
+          accessToken: igData.longLivedToken,
+          tokenExpiresAt: igData.expiresAt,
+          pageId: igData.connectedPageId,
+          username: igData.igUsername || "instagram_user",
+          profilePictureUrl: igData.igProfilePic || ""
+        });
+      }
     }
     // accountType === "admin" needs no Brand/Influencer row — it just manages
     // the Platform/Niche catalog.
@@ -302,4 +329,59 @@ export const googleLogin = asyncHandler(async (req, res) => {
     console.error("Google verify error:", error);
     res.status(401).json({ error: "Invalid Google credential" });
   }
+});
+
+// POST /api/auth/forgot-password
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email is required" });
+
+  const user = await User.findOne({ email: email.toLowerCase() });
+  if (!user) return res.status(404).json({ error: "No account found with this email" });
+
+  // Generate 6-digit OTP
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+  await Otp.deleteMany({ email });
+  await Otp.create({ email, otp: otpCode });
+
+  console.log(`[PASSWORD RESET OTP] Email: ${email} | Code: ${otpCode}`);
+  
+  try {
+    await sendOtpEmail(email, otpCode);
+  } catch (error) {
+    console.error(`Failed to send reset OTP to ${email}:`, error.message);
+    // In dev, we don't want to block the flow if SMTP is broken. We already logged the OTP.
+  }
+  
+  res.json({ message: "Password reset OTP sent successfully (check console if email failed)" });
+});
+
+// POST /api/auth/reset-password
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) {
+    return res.status(400).json({ error: "Email, OTP and new password are required" });
+  }
+  
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: "New password must be at least 6 characters" });
+  }
+
+  const validOtp = await Otp.findOne({ email: email.toLowerCase(), otp });
+  if (!validOtp) {
+    return res.status(400).json({ error: "Invalid or expired OTP" });
+  }
+
+  const user = await User.findOne({ email: email.toLowerCase() });
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  await user.setPassword(newPassword);
+  await user.save();
+  await Otp.deleteMany({ email: email.toLowerCase() });
+
+  const token = signToken(user);
+  res.json({ message: "Password reset successfully", token, user: user.toPublicJSON() });
 });

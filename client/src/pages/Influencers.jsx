@@ -132,7 +132,11 @@ function PlatformFilter({ platforms, selected, onToggle }) {
                 const id = p._id || p.id;
                 const isSelected = selected.includes(id);
                 return (
-                  <label key={id} className={`flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors ${isSelected ? "bg-primary/5" : "hover:bg-muted/50"}`}>
+                  <label 
+                    key={id} 
+                    onClick={() => onToggle(id)}
+                    className={`flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors ${isSelected ? "bg-primary/5" : "hover:bg-muted/50"}`}
+                  >
                     <div className={`flex h-5 w-5 items-center justify-center rounded border transition-colors ${isSelected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"}`}>
                       {isSelected && <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                     </div>
@@ -370,19 +374,27 @@ export default function Influencers({ isDashboard = false }) {
             </p>
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-muted-foreground flex items-center gap-1"><SlidersHorizontal className="size-4" /> Sort by:</span>
-              {["popular", "engagement", "rating", "newest"].map((key) => (
-                <button
-                  key={key}
-                  onClick={() => setSort(key)}
-                  className={`rounded-full px-4 py-1.5 text-xs font-semibold capitalize transition-all ${
-                    sort === key
-                      ? "bg-primary text-primary-foreground shadow-md"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  {key}
-                </button>
-              ))}
+              {["popular", "engagement", "rating", "newest"].map((key) => {
+                const labels = {
+                  popular: "Highest Reach",
+                  engagement: "Engagement",
+                  rating: "Rating",
+                  newest: "Newest"
+                };
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setSort(key)}
+                    className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+                      sort === key
+                        ? "bg-primary text-primary-foreground shadow-md"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    {labels[key]}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

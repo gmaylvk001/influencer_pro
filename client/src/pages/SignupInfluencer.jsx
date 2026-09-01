@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
-import { Sparkles, ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
+import { Sparkles, ArrowLeft, ArrowRight, ShieldCheck, Instagram } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,13 +44,19 @@ function readAsDataUrl(file) {
 
 export default function SignupInfluencer() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const igToken = searchParams.get("ig_token");
+  const igHandle = searchParams.get("handle");
+  const igFollowers = searchParams.get("followers");
+  const igAvatarUrl = searchParams.get("avatarUrl");
+
   const { refreshUser } = useAuth();
   const fileRef = useRef(null);
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const [niches, setNiches] = useState([]);
-  const [platforms, setPlatforms] = useState([]);
-  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [platforms, setPlatforms] = useState(igToken ? ["Instagram"] : []);
+  const [avatarPreview, setAvatarPreview] = useState(igAvatarUrl || null);
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
@@ -143,6 +149,9 @@ export default function SignupInfluencer() {
       formData.append("city", form.district);
       formData.append("startingPrice", form.startingPrice);
       formData.append("otp", otp);
+      if (igToken) {
+        formData.append("igToken", igToken);
+      }
       
       formData.append("socialLinks", JSON.stringify(socialLinks));
       
@@ -183,6 +192,44 @@ export default function SignupInfluencer() {
 
           {step === 1 && (
             <form className="mt-8 grid gap-4 sm:grid-cols-2" onSubmit={goNext}>
+              <div className="sm:col-span-2">
+                {!igToken ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12 bg-gradient-to-r from-purple-600 to-pink-500 text-white hover:from-purple-700 hover:to-pink-600 border-none shadow-md"
+                    onClick={() => {
+                      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+                      window.location.href = `${apiUrl}/api/instagram/auth/signup`;
+                    }}
+                  >
+                    <Instagram className="mr-2 size-5" />
+                    Sign up with Instagram (Recommended)
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-4 rounded-xl border border-border bg-muted/30 p-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full overflow-hidden bg-muted">
+                      {igAvatarUrl ? (
+                        <img src={igAvatarUrl} alt="IG" className="h-full w-full object-cover" />
+                      ) : (
+                        <Instagram className="size-6 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">Instagram Connected</p>
+                      <p className="text-sm text-muted-foreground">{igHandle} • {igFollowers} followers</p>
+                    </div>
+                  </div>
+                )}
+                {!igToken && (
+                  <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="h-px flex-1 bg-border" />
+                    or sign up manually
+                    <span className="h-px flex-1 bg-border" />
+                  </div>
+                )}
+              </div>
+
               <div className="flex flex-col items-center gap-3 sm:col-span-2">
                 <button
                   type="button"

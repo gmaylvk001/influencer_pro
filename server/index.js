@@ -24,7 +24,9 @@ import transactionsRoutes from "./routes/transactions.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import participantsRoutes from "./routes/participants.routes.js";
 import disputesRoutes from "./routes/disputes.routes.js";
+import instagramRoutes from "./routes/instagram.routes.js";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
+import { cronService } from "./services/cron.service.js";
 
 const PORT = process.env.PORT || 4000;
 
@@ -72,6 +74,7 @@ app.use("/api/transactions", transactionsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/participants", participantsRoutes);
 app.use("/api/disputes", disputesRoutes);
+app.use("/api/instagram", instagramRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
@@ -84,6 +87,9 @@ mongoose
     console.log(`[db] connected to MongoDB (${mongoose.connection.name})`);
     server.listen(PORT, () => {
       console.log(`[server] Influbrand API & Socket.io listening on http://85.215.236.172:${PORT}`);
+      
+      // Setup daily cron job at midnight to sync instagram metrics
+      cronService.start();
     });
   })
   .catch((err) => {

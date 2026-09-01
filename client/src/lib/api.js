@@ -106,6 +106,20 @@ export const auth = {
       headers: { Authorization: `Bearer ${token}` }
     }).then(res => res.blob());
   },
+  forgotPassword(email) {
+    return apiFetch("/api/auth/forgot-password", {
+      method: "POST",
+      body: { email },
+      auth: false,
+    });
+  },
+  resetPassword(email, otp, newPassword) {
+    return apiFetch("/api/auth/reset-password", {
+      method: "POST",
+      body: { email, otp, newPassword },
+      auth: false,
+    });
+  },
   logout() {
     setToken(null);
   },
@@ -375,3 +389,28 @@ export const disputes = {
 };
 
 export { ApiError };
+
+const defaultApi = {
+  get: async (path, options = {}) => {
+    const fullPath = path.startsWith("/api") ? path : `/api${path}`;
+    const data = await apiFetch(fullPath, { method: "GET", ...options });
+    return { data };
+  },
+  post: async (path, body, options = {}) => {
+    const fullPath = path.startsWith("/api") ? path : `/api${path}`;
+    const data = await apiFetch(fullPath, { method: "POST", body, ...options });
+    return { data };
+  },
+  patch: async (path, body, options = {}) => {
+    const fullPath = path.startsWith("/api") ? path : `/api${path}`;
+    const data = await apiFetch(fullPath, { method: "PATCH", body, ...options });
+    return { data };
+  },
+  delete: async (path, options = {}) => {
+    const fullPath = path.startsWith("/api") ? path : `/api${path}`;
+    const data = await apiFetch(fullPath, { method: "DELETE", ...options });
+    return { data };
+  }
+};
+
+export default defaultApi;

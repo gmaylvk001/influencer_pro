@@ -7,6 +7,7 @@ import {
   listCampaignApplicants,
   browseCampaigns,
   getCampaign,
+  getCampaignAnalytics,
 } from "../controllers/campaigns.controller.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { upload } from "../middleware/upload.js";
@@ -24,5 +25,6 @@ router.post("/", upload.single("file"), createCampaign);
 router.patch("/:id", updateCampaign);
 router.delete("/:id", deleteCampaign);
 router.get("/:id/applicants", listCampaignApplicants);
+router.get("/:id/analytics", getCampaignAnalytics);
 
 export default router;

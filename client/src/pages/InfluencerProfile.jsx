@@ -267,14 +267,30 @@ export default function InfluencerProfile({ isDashboard = false, fetchOwnProfile
                   <Activity className="size-5 text-primary" />
                   Key Metrics
                 </h3>
+                {profile.classification && profile.classification !== "Unclassified" && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col text-right">
+                      <span className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">Score</span>
+                      <span className="text-2xl font-bold text-primary">{profile.performanceScore}</span>
+                    </div>
+                    <span className={`px-3 py-1.5 text-sm font-bold rounded-full border ${
+                      profile.classification === 'Top Performer' ? 'bg-green-100 text-green-700 border-green-200' :
+                      profile.classification === 'High Performer' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                      profile.classification === 'Average Performer' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                      'bg-red-100 text-red-700 border-red-200'
+                    }`}>
+                      {profile.classification}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-y-8 gap-x-6 sm:grid-cols-3 relative z-10">
                 <StatBox value={formatCount(profile.followers)} label="Followers" />
-                <StatBox value={formatCount(Math.floor(profile.followers * 0.05))} label="Following" />
+                <StatBox value={formatCount(profile.following || 0)} label="Following" />
                 <StatBox value={`${profile.engagement}%`} label="Engagement" />
                 <StatBox value={formatCount(profile.posts)} label="Total Posts" />
                 <StatBox value={formatCount(profile.likes)} label="Avg Likes" />
-                <StatBox value={formatCount(Math.floor(profile.likes * 0.1))} label="Avg Comments" />
+                <StatBox value={formatCount(profile.avgComments || 0)} label="Avg Comments" />
               </div>
             </div>
 

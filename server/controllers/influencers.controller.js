@@ -18,6 +18,7 @@ function toClientShape(doc) {
     platforms: doc.platforms, // populated Platform docs ({ id, name, slug, icon }) or raw ids
     handle: doc.handle,
     followers: doc.followers,
+    following: doc.following,
     posts: doc.posts,
     likes: doc.likes,
     engagement: doc.engagement,
@@ -25,6 +26,7 @@ function toClientShape(doc) {
     is_verified: doc.isVerified,
     socialLinks: doc.socialLinks,
     primaryPlatform: doc.primaryPlatform,
+    classification: doc.classification,
     
     // Additional Profile Fields
     aboutMe: doc.aboutMe,
@@ -111,7 +113,15 @@ export const getInfluencer = asyncHandler(async (req, res) => {
 export const getMyInfluencerProfile = asyncHandler(async (req, res) => {
   const doc = await Influencer.findOne({ userId: req.user._id }).populate(POPULATE);
   if (!doc) return res.status(404).json({ error: "No influencer profile for this account" });
-  res.json(doc);
+  
+  const { Transaction } = await import("../models/Transaction.js");
+  const clearedTxs = await Transaction.find({ influencerId: doc._id, status: "cleared" });
+  const realBalance = clearedTxs.reduce((sum, tx) => sum + tx.amount, 0);
+
+  const docObj = doc.toObject();
+  docObj.account_balance = realBalance;
+
+  res.json(docObj);
 });
 
 // PATCH /api/influencers/me — creator edits their own listing

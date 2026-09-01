@@ -43,6 +43,8 @@ import ForBrands from "@/pages/ForBrands";
 import SignupBrand from "@/pages/SignupBrand";
 import SignupInfluencer from "@/pages/SignupInfluencer";
 import SignupAdmin from "@/pages/SignupAdmin";
+import CampaignAnalytics from "@/pages/CampaignAnalytics";
+import ConnectInstagram from "@/pages/ConnectInstagram";
 
 function SiteLayout({ children }) {
   return (
@@ -79,6 +81,8 @@ function AnimatedRoutes() {
           <Route path="campaigns" element={<DashCampaigns />} />
           <Route path="campaigns/new" element={<CreateCampaign />} />
           <Route path="campaigns/:id/edit" element={<EditCampaign />} />
+          <Route path="campaigns/:campaignId/analytics" element={<CampaignAnalytics />} />
+          <Route path="connect-instagram" element={<ConnectInstagram />} />
           <Route path="offers" element={<DashOffers />} />
           <Route path="workroom/:id" element={<Workroom />} />
           <Route path="messages" element={<DashMessages />} />

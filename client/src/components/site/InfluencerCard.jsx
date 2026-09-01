@@ -1,4 +1,4 @@
-import { BadgeCheck, Heart, Instagram, Send, Star, Youtube, Music2, Facebook, Twitter, Linkedin, Globe } from "lucide-react";
+import { BadgeCheck, Heart, Instagram, Send, Star, Youtube, Music2, Facebook, Twitter, Linkedin, Globe, Flame } from "lucide-react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { formatCount, formatRupees, initials, derivedRating } from "@/lib/catalog";
@@ -26,6 +26,7 @@ export function InfluencerCard({ influencer, onShortlist, onOffer, actionLabel, 
   const PlatformIcon = PLATFORM_ICON[platform?.slug] || Globe;
   const rating = derivedRating(influencer);
   const basePath = isDashboard ? "/dashboard/influencers" : "/influencers";
+  const isHighReach = influencer.followers >= 100000 || influencer.classification === "Top Performer";
 
   return (
     <article className="surface-panel flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-1 hover:shadow-[var(--shadow-premium)]">
@@ -59,9 +60,15 @@ export function InfluencerCard({ influencer, onShortlist, onOffer, actionLabel, 
         <div className="flex items-start justify-between gap-2">
           <div>
             <Link to={`${basePath}/${influencer.id || influencer._id}`} className="hover:underline">
-              <h3 className="flex items-center gap-1.5 font-display text-lg font-semibold">
+              <h3 className="flex items-center flex-wrap gap-1.5 font-display text-lg font-semibold">
                 {influencer.name}
                 {influencer.is_verified && <BadgeCheck className="size-4 text-primary" />}
+                {isHighReach && (
+                  <span className="inline-flex items-center gap-0.5 rounded-md bg-gradient-to-r from-orange-500 to-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm uppercase tracking-wide">
+                    <Flame className="size-3" />
+                    High Reach
+                  </span>
+                )}
               </h3>
             </Link>
             <p className="text-xs text-muted-foreground">{influencer.city}</p>

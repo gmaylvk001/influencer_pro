@@ -5,6 +5,8 @@ import { Platform } from "../models/Platform.js";
 import { Shortlist } from "../models/Shortlist.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { assertIdsExist } from "../utils/validateRefs.js";
+import { InstagramMedia } from "../models/InstagramMedia.js";
+import { MetricSnapshot } from "../models/MetricSnapshot.js";
 
 async function myBrandId(userId) {
   const brand = await Brand.findOne({ userId }).select("_id");
@@ -278,4 +280,105 @@ export const deleteCampaign = asyncHandler(async (req, res) => {
   const campaign = await Campaign.findOneAndDelete({ _id: req.params.id, brandId });
   if (!campaign) return res.status(404).json({ error: "Campaign not found" });
   res.status(204).send();
+});
+
+// GET /api/campaigns/:id/analytics
+export const getCampaignAnalytics = asyncHandler(async (req, res) => {
+  const brandId = await myBrandId(req.user._id);
+  if (!brandId) return res.status(404).json({ error: "No brand profile for this account" });
+
+  const campaign = await Campaign.findOne({ _id: req.params.id, brandId });
+  if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+  // Find all InstagramMedia associated with this campaign
+  const mediaItems = await InstagramMedia.find({ campaignId: campaign._id }).select("_id");
+  const mediaIds = mediaItems.map(m => m._id);
+
+  // Aggregate metrics over time
+  // We want to find the LATEST snapshot for each media on each day,
+  // then sum them up across all media for that day.
+  const snapshots = await MetricSnapshot.aggregate([
+    { $match: { mediaId: { $in: mediaIds } } },
+    {
+      $addFields: {
+        day: { $dateToString: { format: "%Y-%m-%d", date: "$capturedAt" } }
+      }
+    },
+    { $sort: { capturedAt: -1 } }, // Ensure latest snapshots are first
+    {
+      $group: {
+        _id: { mediaId: "$mediaId", day: "$day" },
+        views: { $first: "$views" },
+        reach: { $first: "$reach" }
+      }
+    },
+    {
+      $group: {
+        _id: "$_id.day",
+        views: { $sum: "$views" },
+        reach: { $sum: "$reach" }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ]);
+
+  let chartData = [];
+  
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+  
+  // Start at least 6 days ago (so we get a full 7-day chart view minimum)
+  const minStartDate = new Date(end);
+  minStartDate.setDate(minStartDate.getDate() - 6);
+  minStartDate.setHours(0, 0, 0, 0);
+
+  let curr = new Date(minStartDate);
+
+  if (snapshots.length > 0) {
+    const firstDateStr = snapshots[0]._id;
+    const [year, month, day] = firstDateStr.split('-').map(Number);
+    const firstDate = new Date(year, month - 1, day);
+    // If the first snapshot was taken before 7 days ago, start the chart from that day instead
+    if (firstDate < curr) {
+      curr = firstDate;
+    }
+  }
+
+  let lastKnownViews = 0;
+  let lastKnownReach = 0;
+  const snapshotMap = {};
+  
+  if (snapshots.length > 0) {
+    lastKnownViews = snapshots[0].views;
+    lastKnownReach = snapshots[0].reach;
+    
+    snapshots.forEach(s => {
+      snapshotMap[s._id] = s;
+    });
+  }
+
+  while (curr <= end) {
+    const y = curr.getFullYear();
+    const m = String(curr.getMonth() + 1).padStart(2, '0');
+    const d = String(curr.getDate()).padStart(2, '0');
+    const dayStr = `${y}-${m}-${d}`;
+    
+    if (snapshotMap[dayStr]) {
+      lastKnownViews = snapshotMap[dayStr].views;
+      lastKnownReach = snapshotMap[dayStr].reach;
+    }
+    
+    const formattedDay = curr.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    
+    chartData.push({
+      day: formattedDay,
+      fullDate: dayStr,
+      views: lastKnownViews,
+      reach: lastKnownReach
+    });
+
+    curr.setDate(curr.getDate() + 1);
+  }
+
+  res.json({ chartData });
 });

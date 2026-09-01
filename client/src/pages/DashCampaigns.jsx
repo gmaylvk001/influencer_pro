@@ -273,6 +273,12 @@ function ActionMenu({ campaign, onView, onViewApplicants, onDelete }) {
             >
               View Applicants
             </button>
+            <Link
+              to={`/dashboard/campaigns/${campaign._id}/analytics`}
+              className="block w-full px-4 py-2 text-left text-sm font-semibold text-indigo-600 hover:bg-indigo-50"
+            >
+              View Analytics
+            </Link>
             <button
               className="block w-full px-4 py-2 text-left text-sm text-destructive hover:bg-destructive/10"
               onClick={() => { setOpen(false); onDelete(campaign._id); }}

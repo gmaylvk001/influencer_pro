@@ -8,13 +8,16 @@ import {
   getParticipantDetails,
   getMyParticipants,
   submitLiveUrl,
-  approveCompletion
+  approveCompletion,
+  getParticipantsByCampaign
 } from "../controllers/participants.controller.js";
 
 const router = express.Router();
 
 // Apply auth middleware to all routes
 router.use(requireAuth);
+
+router.get("/campaign/:campaignId", getParticipantsByCampaign);
 
 router.get("/", getMyParticipants);
 router.post("/invite", inviteParticipant);

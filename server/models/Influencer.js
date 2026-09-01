@@ -26,8 +26,10 @@ const influencerSchema = new mongoose.Schema(
 
     handle: { type: String, default: null },
     followers: { type: Number, default: 0 },
+    following: { type: Number, default: 0 },
     posts: { type: Number, default: 0 },
     likes: { type: Number, default: 0 },
+    avgComments: { type: Number, default: 0 },
     engagement: { type: Number, default: 0 },
     startingPrice: { type: Number, default: null },
     isVerified: { type: Boolean, default: false },
@@ -62,6 +64,11 @@ const influencerSchema = new mongoose.Schema(
     },
     influBrandScore: { type: Number, default: 0 },
     account_balance: { type: Number, default: 0 },
+    
+    // Performance and Classification
+    performanceScore: { type: Number, default: 0 },
+    classification: { type: String, enum: ["Top Performer", "High Performer", "Average Performer", "Low Performer", "Under Review", "Suspicious", "Not Recommended", "Unclassified"], default: "Unclassified" },
+    recommendedModel: { type: String, enum: ["Annual Contract Candidate", "Per-Video Candidate", "Trial Candidate", "Not Recommended", "Unclassified"], default: "Unclassified" },
 
     // Analytics and Profile Real Data
     hashtags: { type: [String], default: [] },

@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import {
   Save,
@@ -19,6 +20,7 @@ import {
   Trash2,
   Plus,
   X,
+  Instagram,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -876,10 +878,16 @@ function SocialAssetsSection({ profileData, onUpdate }) {
             </div>
           ))}
         </div>
-        <div className="pt-4 sm:pl-[180px]">
+        <div className="pt-4 sm:pl-[180px] flex items-center gap-4">
           <Button variant="hero" onClick={handleSave} disabled={busy}>
             <Save className="size-4" />
             {busy ? "Saving…" : "Save"}
+          </Button>
+          <Button variant="outline" asChild className="border-indigo-500 text-indigo-600 hover:bg-indigo-50">
+            <Link to="/dashboard/connect-instagram">
+              <Instagram className="mr-2 size-4" />
+              Connect Instagram Account
+            </Link>
           </Button>
         </div>
       </div>
@@ -1127,8 +1135,8 @@ function PaymentDetailsSection({ profileData, onUpdate }) {
 function ScoreSection({ profileData }) {
   const followers = profileData?.followers || 0;
   const posts = profileData?.posts || 0;
-  // Estimate following since it's not a primary tracked metric
-  const following = Math.floor(followers * 0.05); 
+  // Use actual following count if available from API
+  const following = profileData?.following || 0; 
   const bioWords = (profileData?.bio || "").split(/\s+/).filter(Boolean).length;
   
   const niches = profileData?.niches || [];
@@ -1287,6 +1295,15 @@ function DeleteAccountSection({ user }) {
 
 export default function DashProfile() {
   const { user, accountType } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("ig_connected") === "true") {
+      toast.success("Instagram account successfully connected!");
+      searchParams.delete("ig_connected");
+      setSearchParams(searchParams);
+    }
+  }, [searchParams, setSearchParams]);
 
   return (
     <div className="space-y-6">

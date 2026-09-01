@@ -28,7 +28,15 @@ const campaignParticipantSchema = new mongoose.Schema(
     agreedAmount: { type: Number, default: 0 },
     platformFee: { type: Number, default: 0 },
     invitationMessage: { type: String, default: "" },
-    deadline: { type: Date, default: null }
+    deadline: { type: Date, default: null },
+    instagramMediaId: { type: mongoose.Schema.Types.ObjectId, ref: "InstagramMedia", default: null },
+    performanceMetrics: {
+      views: { type: Number, default: 0 },
+      reach: { type: Number, default: 0 },
+      engagement: { type: Number, default: 0 },
+      engagementRate: { type: Number, default: 0 },
+      lastUpdated: { type: Date, default: null }
+    }
   },
   { timestamps: true }
 );

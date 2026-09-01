@@ -5,7 +5,10 @@ import { Deliverable } from "../models/Deliverable.js";
 import { Campaign } from "../models/Campaign.js";
 import { Brand } from "../models/Brand.js";
 import { Influencer } from "../models/Influencer.js";
+import { InstagramAccount } from "../models/InstagramAccount.js";
+import { InstagramMedia } from "../models/InstagramMedia.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import axios from "axios";
 
 // Brand invites influencer
 export const inviteParticipant = asyncHandler(async (req, res) => {
@@ -197,16 +200,104 @@ export const submitLiveUrl = asyncHandler(async (req, res) => {
 
   if (!url) return res.status(400).json({ error: "Live URL is required." });
 
-  // Update participant status
-  participant.status = "published";
-  
-  // Could optionally save this URL somewhere, e.g. on the participant or the submission.
-  // For now we'll just save it on the participant model if we add a `liveUrl` field.
-  // Alternatively, just trust the status progression for now.
-  
-  await participant.save();
 
-  res.json({ message: "Live URL submitted", participant });
+  // Create InstagramMedia record
+  const META_APP_ID = process.env.META_APP_ID || "mock_app_id";
+  const GRAPH_API_VERSION = "v20.0";
+  
+  try {
+    if (META_APP_ID !== "mock_app_id") {
+      // 1. Extract shortcode from URL (e.g. /p/SHORTCODE/ or /reel/SHORTCODE/)
+      const match = url.match(/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/i);
+      const shortcode = match ? match[1] : null;
+
+      if (shortcode) {
+        // 2. Fetch the influencer's Instagram Account
+        const account = await InstagramAccount.findOne({ influencerId: participant.influencerId });
+        
+        if (account && account.instagramUserId && account.accessToken) {
+          // 3. Query Graph API for recent media
+          const mediaRes = await axios.get(`https://graph.facebook.com/${GRAPH_API_VERSION}/${account.instagramUserId}/media`, {
+            params: {
+              fields: 'id,shortcode,permalink,media_type',
+              access_token: account.accessToken,
+              limit: 50
+            }
+          });
+          
+          const mediaList = mediaRes.data.data || [];
+          const matchedMedia = mediaList.find(m => m.shortcode === shortcode);
+
+          if (matchedMedia) {
+            // 4. Create the InstagramMedia document
+            await InstagramMedia.findOneAndUpdate(
+              { campaignId: participant.campaignId, influencerId: participant.influencerId, mediaId: matchedMedia.id },
+              {
+                permalink: matchedMedia.permalink || url,
+                mediaType: matchedMedia.media_type
+              },
+              { upsert: true, new: true }
+            );
+
+            participant.status = "published";
+            await participant.save();
+            return res.json({ message: "Live URL submitted and verified", participant });
+          } else {
+            return res.status(400).json({ error: "Invalid link or post is private. Please ensure the URL belongs to a recent public post on your connected account." });
+          }
+        } else {
+          return res.status(400).json({ error: "Instagram account not connected properly." });
+        }
+      } else {
+        return res.status(400).json({ error: "Invalid Instagram URL format." });
+      }
+    } else {
+      // Mock mode fallback
+      await InstagramMedia.findOneAndUpdate(
+        { campaignId: participant.campaignId, influencerId: participant.influencerId, mediaId: "mock_media_" + Date.now() },
+        {
+          permalink: url,
+          mediaType: "REELS"
+        },
+        { upsert: true, new: true }
+      );
+      participant.status = "published";
+      await participant.save();
+      return res.json({ message: "Live URL submitted (Mock Mode)", participant });
+    }
+  } catch (err) {
+    console.error("Error creating InstagramMedia from URL:", err.response?.data || err.message);
+    return res.status(500).json({ error: "Failed to verify Instagram URL with Meta Graph API." });
+  }
+});
+
+// Get all participants for a specific campaign
+export const getParticipantsByCampaign = asyncHandler(async (req, res) => {
+  const { campaignId } = req.params;
+
+  // We should verify the user is either the brand that owns the campaign or an admin
+  const campaign = await Campaign.findById(campaignId);
+  if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+  if (req.user.accountType === "brand") {
+    const brand = await Brand.findOne({ userId: req.user._id });
+    if (campaign.brandId.toString() !== brand._id.toString()) {
+      return res.status(403).json({ error: "Unauthorized access to campaign participants." });
+    }
+  } else if (req.user.accountType === "influencer") {
+      // Influencers shouldn't normally see other participants, maybe just return theirs
+      const influencer = await Influencer.findOne({ userId: req.user._id });
+      const participant = await CampaignParticipant.find({ campaignId, influencerId: influencer._id })
+        .populate("influencerId", "name avatarUrl handle followers classification performanceScore");
+      return res.json(participant);
+  }
+
+  const participants = await CampaignParticipant.find({ campaignId })
+    .populate("influencerId", "name avatarUrl handle followers classification performanceScore")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  res.json(participants);
 });
 
 // Brand approves completion and releases funds
