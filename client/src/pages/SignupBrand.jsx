@@ -91,7 +91,7 @@ export default function SignupBrand() {
   async function sendOtp() {
     setSendingOtp(true);
     try {
-      await auth.sendOtp({ email: form.email });
+      await auth.sendOtp(form.email);
       setOtpSent(true);
       toast.success(`Verification code sent to ${form.email}`);
     } catch (err) {

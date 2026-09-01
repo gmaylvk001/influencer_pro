@@ -12,7 +12,7 @@ export const loginLimiter = rateLimit({
 // Limit repeated OTP requests (more strict to prevent email/sms bombing)
 export const otpLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // Limit each IP to 5 requests per windowMs
+  max: 50, // Limit each IP to 50 requests per windowMs
   message: { error: "Too many OTP requests, please try again after 1 hour." },
   standardHeaders: true,
   legacyHeaders: false,
